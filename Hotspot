@@ -1,0 +1,88 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import folium
+from folium.plugins import HeatMap
+
+# Load dataset
+file_path = "US_Accidents_Dec21.csv"  # Change path if needed
+df = pd.read_csv(file_path)
+
+# Display basic info
+print(df.info())
+
+# Select relevant columns
+columns = ['Start_Time', 'Severity', 'Temperature(F)', 'Humidity(%)', 'Pressure(in)', 
+           'Visibility(mi)', 'Wind_Speed(mph)', 'Weather_Condition', 'Sunrise_Sunset', 
+           'Start_Lat', 'Start_Lng']
+df = df[columns]
+
+# Convert Start_Time to datetime
+df['Start_Time'] = pd.to_datetime(df['Start_Time'])
+
+# Extract time-related features
+df['Hour'] = df['Start_Time'].dt.hour
+df['DayOfWeek'] = df['Start_Time'].dt.dayofweek
+df['Month'] = df['Start_Time'].dt.month
+
+# ---------------------- TIME-BASED ANALYSIS ----------------------
+
+# Accidents per hour
+plt.figure(figsize=(12, 6))
+sns.countplot(x=df['Hour'], palette="viridis")
+plt.title("Accidents by Hour of the Day")
+plt.xlabel("Hour")
+plt.ylabel("Accident Count")
+plt.show()
+
+# Accidents per day of the week
+plt.figure(figsize=(12, 6))
+sns.countplot(x=df['DayOfWeek'], palette="coolwarm")
+plt.title("Accidents by Day of the Week (0 = Monday, 6 = Sunday)")
+plt.xlabel("Day of the Week")
+plt.ylabel("Accident Count")
+plt.show()
+
+# Accidents per month
+plt.figure(figsize=(12, 6))
+sns.countplot(x=df['Month'], palette="magma")
+plt.title("Accidents by Month")
+plt.xlabel("Month")
+plt.ylabel("Accident Count")
+plt.show()
+
+# ---------------------- WEATHER & ROAD CONDITIONS ANALYSIS ----------------------
+
+# Weather condition impact
+plt.figure(figsize=(12, 6))
+top_weather = df['Weather_Condition'].value_counts().nlargest(10)  # Top 10 weather conditions
+sns.barplot(x=top_weather.index, y=top_weather.values, palette="Set2")
+plt.xticks(rotation=45)
+plt.title("Top 10 Weather Conditions Leading to Accidents")
+plt.xlabel("Weather Condition")
+plt.ylabel("Accident Count")
+plt.show()
+
+# Severity distribution
+plt.figure(figsize=(8, 6))
+sns.countplot(x=df['Severity'], palette="coolwarm")
+plt.title("Severity Distribution of Accidents")
+plt.xlabel("Severity (1 = Low, 4 = High)")
+plt.ylabel("Accident Count")
+plt.show()
+
+# ---------------------- ACCIDENT HOTSPOT MAP ----------------------
+
+# Subset data for mapping
+sample_size = 5000  # Reduce data points for efficiency
+df_sample = df[['Start_Lat', 'Start_Lng']].dropna().sample(sample_size, random_state=42)
+
+# Create a folium map
+m = folium.Map(location=[df_sample['Start_Lat'].mean(), df_sample['Start_Lng'].mean()], zoom_start=5)
+
+# Add heatmap
+HeatMap(data=df_sample[['Start_Lat', 'Start_Lng']].values, radius=8).add_to(m)
+
+# Save map to an HTML file
+m.save("accident_hotspot_map.html")
+print("Accident hotspot map saved as 'accident_hotspot_map.html'. Open it in a browser to view.")
